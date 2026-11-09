@@ -1,0 +1,308 @@
+/* Styles de toute l'interface. Aucune police ni image externe :
+   on utilise les polices déjà présentes sur l'appareil. */
+
+:root {
+  --texte: #dfe9f5;
+  --texte-discret: #8fa3b8;
+  --accent: #7fd4ff;
+  --fond-panneau: rgba(6, 12, 22, 0.72);
+  --bord-panneau: rgba(127, 212, 255, 0.22);
+  --police: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --police-chiffres: ui-monospace, 'Cascadia Mono', Consolas, Menlo, monospace;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  color: var(--texte);
+  font-family: var(--police);
+  /* Pas de sélection de texte ni de zoom accidentel pendant le jeu. */
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+#scene {
+  position: fixed;
+  inset: 0;
+  display: block;
+  outline: none;
+}
+
+#interface {
+  position: fixed;
+  inset: 0;
+  pointer-events: none; /* les clics traversent, sauf sur les éléments marqués ci-dessous */
+}
+
+/* ---------- Écran d'accueil ---------- */
+
+.accueil {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  pointer-events: auto;
+  background: radial-gradient(ellipse at center, rgba(4, 10, 20, 0.55), rgba(0, 0, 0, 0.9));
+  overflow-y: auto;
+}
+
+.accueil-cadre {
+  width: min(480px, 100%);
+  text-align: center;
+}
+
+.accueil h1 {
+  margin: 0 0 6px;
+  font-size: clamp(34px, 8vw, 56px);
+  font-weight: 200;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.accueil .sous-titre {
+  margin: 0 0 28px;
+  color: var(--texte-discret);
+  font-size: 15px;
+}
+
+.accueil label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--texte-discret);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.accueil input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid var(--bord-panneau);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.5);
+  color: var(--texte);
+  font: 18px var(--police-chiffres);
+  text-align: center;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.accueil input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.bouton {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 13px 34px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: rgba(127, 212, 255, 0.12);
+  color: var(--texte);
+  font: 600 16px var(--police);
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.bouton:hover,
+.bouton:focus-visible {
+  background: rgba(127, 212, 255, 0.26);
+  outline: none;
+}
+
+.accueil .note {
+  margin-top: 26px;
+  color: var(--texte-discret);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* ---------- Affichage de bord (HUD) ---------- */
+
+.hud {
+  position: absolute;
+  inset: 0;
+  font-size: 13px;
+  text-shadow: 0 1px 3px #000;
+}
+
+.hud > div {
+  position: absolute;
+}
+
+.hud .haut-gauche {
+  top: max(12px, env(safe-area-inset-top));
+  left: max(14px, env(safe-area-inset-left));
+}
+
+.hud .haut-droite {
+  top: max(12px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  text-align: right;
+}
+
+.hud .bas-gauche {
+  bottom: max(12px, env(safe-area-inset-bottom));
+  left: max(14px, env(safe-area-inset-left));
+}
+
+.hud .bas-centre {
+  bottom: max(12px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.hud .titre {
+  color: var(--accent);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.hud .valeur {
+  font-family: var(--police-chiffres);
+  font-variant-numeric: tabular-nums;
+}
+
+.hud .discret {
+  color: var(--texte-discret);
+}
+
+.hud .etoile-nom {
+  font-size: 16px;
+  letter-spacing: 0.04em;
+}
+
+/* Le viseur : un simple point au centre de l'écran. */
+.viseur {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: rgba(223, 233, 245, 0.55);
+}
+
+/* ---------- Panneaux (aide, mesures) ---------- */
+
+.panneau {
+  position: absolute;
+  padding: 12px 14px;
+  border: 1px solid var(--bord-panneau);
+  border-radius: 8px;
+  background: var(--fond-panneau);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.panneau h2 {
+  margin: 0 0 6px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.aide {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(420px, calc(100% - 48px));
+  box-sizing: border-box;
+}
+
+.aide table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.aide td {
+  padding: 2px 0;
+  vertical-align: top;
+}
+
+.aide td:first-child {
+  padding-right: 14px;
+  color: var(--accent);
+  font-family: var(--police-chiffres);
+  white-space: nowrap;
+}
+
+.mesures {
+  top: 64px;
+  right: max(14px, env(safe-area-inset-right));
+  min-width: 210px;
+  font-family: var(--police-chiffres);
+  font-size: 12px;
+  white-space: pre;
+}
+
+/* ---------- Boutons tactiles ---------- */
+
+.tactile {
+  position: absolute;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(64px, calc(env(safe-area-inset-bottom) + 52px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tactile button {
+  width: 52px;
+  height: 52px;
+  border: 1px solid var(--bord-panneau);
+  border-radius: 50%;
+  background: var(--fond-panneau);
+  color: var(--texte);
+  font: 600 22px var(--police);
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.cache {
+  display: none !important;
+}
+
+/* ---------- Écrans étroits (téléphone tenu verticalement) ---------- */
+
+@media (max-width: 640px) {
+  .hud {
+    font-size: 12px;
+  }
+
+  .hud .haut-gauche {
+    max-width: 58%;
+  }
+
+  .hud .haut-droite .discret {
+    display: none;
+  }
+
+  /* L'étoile la plus proche passe au-dessus du bloc de position. */
+  .hud .bas-centre {
+    bottom: max(86px, calc(env(safe-area-inset-bottom) + 74px));
+    left: max(14px, env(safe-area-inset-left));
+    transform: none;
+    text-align: left;
+  }
+
+  .hud .bas-gauche {
+    right: 80px;
+  }
+}
