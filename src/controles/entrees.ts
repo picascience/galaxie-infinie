@@ -26,6 +26,11 @@ export class Entrees {
   private origineMancheY = 0;
   private dernierRegardX = 0;
   private dernierRegardY = 0;
+  // Détection d'une « tape » : un toucher bref, sans glisser.
+  private debutTape = 0;
+  private departTapeX = 0;
+  private departTapeY = 0;
+  private tape: { x: number; y: number } | null = null;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     window.addEventListener('keydown', (e) => {
@@ -103,6 +108,21 @@ export class Entrees {
     return m;
   }
 
+  /** Renvoie la dernière tape sur l'écran (position en pixels), puis l'oublie. */
+  lireTape(): { x: number; y: number } | null {
+    const t = this.tape;
+    this.tape = null;
+    return t;
+  }
+
+  /** Oublie tout ce qui a été accumulé (utile quand le jeu ignore les commandes un moment). */
+  vider(): void {
+    this.regardX = 0;
+    this.regardY = 0;
+    this.molette = 0;
+    this.tape = null;
+  }
+
   /** Simule des crans de molette (boutons « + » et « − » de l'écran tactile). */
   ajouterMolette(crans: number): void {
     this.molette += crans;
@@ -120,6 +140,9 @@ export class Entrees {
         this.dernierRegardX = doigt.clientX;
         this.dernierRegardY = doigt.clientY;
       }
+      this.debutTape = performance.now();
+      this.departTapeX = doigt.clientX;
+      this.departTapeY = doigt.clientY;
     }
   }
 
@@ -144,6 +167,8 @@ export class Entrees {
   private finToucher(e: TouchEvent): void {
     e.preventDefault();
     for (const doigt of Array.from(e.changedTouches)) {
+      const glisse = Math.abs(doigt.clientX - this.departTapeX) + Math.abs(doigt.clientY - this.departTapeY);
+      if (performance.now() - this.debutTape < 300 && glisse < 12) this.tape = { x: doigt.clientX, y: doigt.clientY };
       if (doigt.identifier === this.doigtManche) {
         this.doigtManche = null;
         this.manche.x = 0;

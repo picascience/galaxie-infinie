@@ -8,6 +8,7 @@ attribute float luminosite;
 uniform float uRayonVisible;   // au-delà de cette distance (al), l'étoile n'est plus chargée
 uniform float uEchellePixels;  // finesse de l'écran (pour garder la même taille apparente)
 uniform float uOpacite;        // 0 = niveau masqué, 1 = visible
+uniform vec4 uExclue;          // xyz : étoile à ne pas dessiner ; w : 1 si la règle est active
 
 varying vec3 vCouleur;
 varying float vEclat;
@@ -25,6 +26,9 @@ void main() {
 
   // Fondu en bordure de zone chargée : les étoiles apparaissent en douceur.
   float fondu = 1.0 - smoothstep(0.7 * uRayonVisible, uRayonVisible, dist);
+
+  // L'étoile du système où l'on se trouve est dessinée en 3D, pas comme un point.
+  if (uExclue.w > 0.5 && distance(position, uExclue.xyz) < 0.02) fondu = 0.0;
 
   vCouleur = couleur;
   vEclat = b * (0.22 + 1.2 * b) * fondu * uOpacite;

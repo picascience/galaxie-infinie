@@ -1,4 +1,4 @@
-// Le moteur de rendu : il possède le « renderer » Three.js, la scène et la caméra.
+// Le moteur de rendu : il possède le « renderer » Three.js, les scènes et les caméras.
 //
 // Deux principes pour gérer les très grandes distances :
 //
@@ -10,7 +10,13 @@
 //
 // 2. PROFONDEUR LOGARITHMIQUE. Le tampon de profondeur répartit sa précision
 //    de façon logarithmique : on peut afficher dans la même image un objet à
-//    10 cm et un autre à des milliards de kilomètres sans scintillement.
+//    1 m et un autre à des milliards de kilomètres sans scintillement.
+//
+// L'image est dessinée en trois passes, de la plus lointaine à la plus proche :
+//   a. le FOND : la galaxie et ses étoiles (unité : l'année-lumière) ;
+//   b. le SYSTÈME solaire où l'on se trouve (unité : le mètre) ;
+//   c. les EFFETS plein écran (hyperespace).
+// Les deux premières ont chacune leur caméra, orientées de la même façon.
 
 import * as THREE from 'three';
 import type { Prereglage } from '../config/graphismes';
@@ -24,8 +30,15 @@ export interface PositionDouble {
 
 export class Moteur {
   readonly renderer: THREE.WebGLRenderer;
+  /** Fond : galaxie et étoiles lointaines (années-lumière). */
+  readonly sceneFond = new THREE.Scene();
+  readonly cameraFond: THREE.PerspectiveCamera;
+  /** Système solaire courant (mètres). */
   readonly scene = new THREE.Scene();
   readonly camera: THREE.PerspectiveCamera;
+  /** Effets plein écran. */
+  readonly sceneEffets = new THREE.Scene();
+  private readonly cameraEffets = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   /** Finesse réelle de l'image (pixels calculés par pixel CSS). */
   rapportPixels = 1;
 
@@ -35,17 +48,20 @@ export class Moteur {
   ) {
     this.renderer = new THREE.WebGLRenderer({
       canvas,
-      antialias: false,
+      antialias: prereglage.nom !== 'bas',
       alpha: false,
       logarithmicDepthBuffer: true,
       powerPreference: 'high-performance',
     });
     this.renderer.setClearColor(0x000000, 1);
+    // On efface et on compte nous-mêmes, car une image = plusieurs passes.
+    this.renderer.autoClear = false;
+    this.renderer.info.autoReset = false;
 
     // Champ de vision de 60°. Les plans proche et lointain sont très écartés :
     // c'est la profondeur logarithmique qui rend cela possible.
-    this.camera = new THREE.PerspectiveCamera(60, 1, 0.01, 1e7);
-    this.camera.position.set(0, 0, 0);
+    this.cameraFond = new THREE.PerspectiveCamera(60, 1, 1e-4, 1e7);
+    this.camera = new THREE.PerspectiveCamera(60, 1, 1, 1e15);
 
     this.redimensionner();
     window.addEventListener('resize', () => this.redimensionner());
@@ -60,13 +76,20 @@ export class Moteur {
     this.renderer.setSize(largeur, hauteur, false);
     this.canvas.style.width = `${largeur}px`;
     this.canvas.style.height = `${hauteur}px`;
-    this.camera.aspect = largeur / hauteur;
-    this.camera.updateProjectionMatrix();
+    for (const camera of [this.cameraFond, this.camera]) {
+      camera.aspect = largeur / hauteur;
+      camera.updateProjectionMatrix();
+    }
+  }
+
+  /** Largeur de l'écran divisée par sa hauteur. */
+  get rapportEcran(): number {
+    return this.camera.aspect;
   }
 
   /**
    * Nombre de pixels occupés à l'écran par un objet de taille 1 situé à la distance 1.
-   * (Sert aux shaders qui dessinent des points de taille « réelle ».)
+   * (Sert à calculer la taille apparente des objets.)
    */
   get facteurProjection(): number {
     const hauteurPixels = window.innerHeight * this.rapportPixels;
@@ -74,8 +97,25 @@ export class Moteur {
     return hauteurPixels / (2 * Math.tan(demiAngle));
   }
 
-  /** Dessine une image. */
+  /** Oriente les deux caméras de la même façon. */
+  orienter(orientation: THREE.Quaternion): void {
+    this.cameraFond.quaternion.copy(orientation);
+    this.camera.quaternion.copy(orientation);
+    this.cameraFond.updateMatrixWorld();
+    this.camera.updateMatrixWorld();
+  }
+
+  /** Dessine une image complète. */
   rendre(): void {
-    this.renderer.render(this.scene, this.camera);
+    const r = this.renderer;
+    r.info.reset();
+    r.clear();
+    r.render(this.sceneFond, this.cameraFond);
+    r.clearDepth();
+    r.render(this.scene, this.camera);
+    if (this.sceneEffets.children.length > 0) {
+      r.clearDepth();
+      r.render(this.sceneEffets, this.cameraEffets);
+    }
   }
 }

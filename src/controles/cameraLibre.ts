@@ -89,6 +89,11 @@ export class CameraLibre {
     this.position.z += this.vitesse.z * dt;
   }
 
+  /** Arrête net la caméra (quand on ouvre la carte). */
+  arreter(): void {
+    this.vitesse.set(0, 0, 0);
+  }
+
   private tourner(axe: THREE.Vector3, angle: number): void {
     if (angle === 0) return;
     this.rotation.setFromAxisAngle(axe, angle);

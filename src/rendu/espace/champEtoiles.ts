@@ -6,21 +6,10 @@
 
 import * as THREE from 'three';
 import { NIVEAUX_SECTEURS } from '../../config/echelles';
-import { CLASSES_ETOILES } from '../../univers/galaxie/etoiles';
-import { nomEtoile } from '../../univers/galaxie/noms';
-import type { CacheSecteurs, DonneesSecteur } from '../../univers/galaxie/secteurs';
+import { etoileDuSecteur, type AdresseEtoile, type CacheSecteurs, type DonneesSecteur, type EtoileGalaxie } from '../../univers/galaxie/secteurs';
 import type { PositionDouble } from '../moteur';
 import fragment from '../shaders/etoiles.frag.glsl?raw';
 import sommets from '../shaders/etoiles.vert.glsl?raw';
-
-/** Ce que l'on sait d'une étoile pour l'afficher dans le HUD. */
-export interface InfoEtoile {
-  nom: string;
-  famille: string;
-  binaire: boolean;
-  /** Distance à la caméra (al). */
-  distance: number;
-}
 
 /** État d'affichage d'un niveau d'étoiles. */
 interface NiveauAffiche {
@@ -44,6 +33,8 @@ interface NiveauAffiche {
 export class ChampEtoiles {
   readonly groupe = new THREE.Group();
   private readonly niveaux: NiveauAffiche[] = [];
+  /** Étoile masquée du champ d'étoiles (null : aucune). */
+  etoileExclue: EtoileGalaxie | null = null;
 
   constructor(
     private readonly cache: CacheSecteurs,
@@ -57,6 +48,7 @@ export class ChampEtoiles {
           uRayonVisible: { value: rayon * taille },
           uEchellePixels: { value: 1 },
           uOpacite: { value: 1 },
+          uExclue: { value: new THREE.Vector4(0, 0, 0, 0) },
         },
         blending: THREE.AdditiveBlending,
         transparent: true,
@@ -113,6 +105,15 @@ export class ChampEtoiles {
 
       // Origine flottante : on place le coin du secteur d'ancrage par rapport à la caméra.
       niveau.points.position.set(niveau.ax * t - camera.x, niveau.ay * t - camera.y, niveau.az * t - camera.z);
+
+      // Étoile à ne pas dessiner (celle du système où l'on se trouve).
+      const exclue = niveau.materiau.uniforms.uExclue!.value as THREE.Vector4;
+      const e = this.etoileExclue;
+      if (e && e.niveau === niveau.indice) {
+        exclue.set(e.x - niveau.ax * t, e.y - niveau.ay * t, e.z - niveau.az * t, 1);
+      } else {
+        exclue.w = 0;
+      }
     }
   }
 
@@ -187,7 +188,7 @@ export class ChampEtoiles {
   }
 
   /** Cherche l'étoile la plus proche de la caméra parmi les étoiles chargées. */
-  etoileLaPlusProche(camera: PositionDouble): InfoEtoile | null {
+  etoileLaPlusProche(camera: PositionDouble): EtoileGalaxie | null {
     let meilleurD2 = Infinity;
     let meilleurSecteur: DonneesSecteur | null = null;
     let meilleurIndice = -1;
@@ -213,12 +214,48 @@ export class ChampEtoiles {
         }
       }
     }
-    if (!meilleurSecteur) return null;
-    return {
-      nom: nomEtoile(meilleurSecteur.graines[meilleurIndice]!),
-      famille: CLASSES_ETOILES[meilleurSecteur.classes[meilleurIndice]!]!.nom,
-      binaire: meilleurSecteur.binaires[meilleurIndice] === 1,
-      distance: Math.sqrt(meilleurD2),
-    };
+    return meilleurSecteur ? etoileDuSecteur(meilleurSecteur, meilleurIndice) : null;
+  }
+
+  /**
+   * Cherche l'étoile visible la plus proche d'une direction de visée.
+   * @param camera    position de la caméra (al)
+   * @param direction direction visée (vecteur de longueur 1)
+   * @param angleMax  écart maximal toléré (radians)
+   * @param ignoree   étoile à ne jamais renvoyer (celle où l'on se trouve)
+   */
+  viser(camera: PositionDouble, direction: THREE.Vector3, angleMax: number, ignoree: AdresseEtoile | null): EtoileGalaxie | null {
+    const cosMin = Math.cos(angleMax);
+    let meilleurCos = cosMin;
+    let meilleurSecteur: DonneesSecteur | null = null;
+    let meilleurIndice = -1;
+    for (const niveau of this.niveaux) {
+      if (!niveau.aJour || !niveau.points.visible) continue;
+      const t = niveau.taille;
+      const porteeMax = this.rayon * t;
+      for (const s of niveau.secteurs) {
+        const ox = s.sx * t - camera.x;
+        const oy = s.sy * t - camera.y;
+        const oz = s.sz * t - camera.z;
+        const memeSecteur = ignoree !== null && ignoree.niveau === s.niveau && ignoree.sx === s.sx && ignoree.sy === s.sy && ignoree.sz === s.sz;
+        for (let i = 0; i < s.nombre; i++) {
+          const dx = ox + s.positions[i * 3]!;
+          const dy = oy + s.positions[i * 3 + 1]!;
+          const dz = oz + s.positions[i * 3 + 2]!;
+          const scalaire = dx * direction.x + dy * direction.y + dz * direction.z;
+          if (scalaire <= 0) continue; // derrière la caméra
+          const d2 = dx * dx + dy * dy + dz * dz;
+          // Test rapide sans racine carrée : cos² > cosMin².
+          if (scalaire * scalaire < meilleurCos * meilleurCos * d2) continue;
+          // On ne vise que les étoiles réellement visibles à l'écran (assez de lumière reçue, pas en bordure de zone).
+          if (s.luminosites[i]! < 3.2e-6 * d2 || d2 > porteeMax * porteeMax * 0.72) continue;
+          if (memeSecteur && ignoree!.indice === i) continue;
+          meilleurCos = scalaire / Math.sqrt(d2);
+          meilleurSecteur = s;
+          meilleurIndice = i;
+        }
+      }
+    }
+    return meilleurSecteur ? etoileDuSecteur(meilleurSecteur, meilleurIndice) : null;
   }
 }

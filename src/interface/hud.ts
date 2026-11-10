@@ -1,130 +1,153 @@
 // Affichage de bord (HUD) : les informations posées par-dessus l'image 3D.
-// Tout est en HTML simple ; ce fichier crée les éléments une fois, puis
-// ne fait que changer leur texte.
+// Tout est en HTML simple. Ce fichier crée les éléments une fois ; le jeu
+// ne fait ensuite que changer leurs textes selon le mode (système ou carte).
 
-import type { InfoEtoile } from '../rendu/espace/champEtoiles';
-import type { PositionDouble } from '../rendu/moteur';
-
-/** Écrit un nombre « à la française » : 26 000,5 */
-function nombre(valeur: number, decimales = 0): string {
-  return valeur.toLocaleString('fr-FR', { minimumFractionDigits: decimales, maximumFractionDigits: decimales });
-}
-
-/** Écrit une vitesse en années-lumière par seconde, avec une précision adaptée. */
-function vitesse(v: number): string {
-  if (v < 1) return `${nombre(v, 2)} al/s`;
-  if (v < 100) return `${nombre(v, 1)} al/s`;
-  return `${nombre(v)} al/s`;
-}
-
-/** Écrit une distance en années-lumière. */
-function distance(d: number): string {
-  return d < 100 ? `${nombre(d, 1)} al` : `${nombre(d)} al`;
-}
-
-export interface EtatHud {
-  position: PositionDouble;
-  vitesse: number;
-  vitesseMax: number;
-  etoilesAffichees: number;
-  etoileProche: InfoEtoile | null;
+export interface BoutonHud {
+  texte: string;
+  action: () => void;
 }
 
 export class Hud {
+  private readonly racine: HTMLDivElement;
+  private readonly zones: Record<string, HTMLElement> = {};
+  private readonly boutons: HTMLElement;
+  private readonly aide: HTMLElement;
+  private readonly message: HTMLElement;
+  private finMessage = 0;
+  private signatureBoutons = '';
+
   /** Appelée quand le joueur touche un bouton de vitesse (+1 ou −1 cran). */
   surVitesse: (crans: number) => void = () => undefined;
 
-  private readonly racine: HTMLDivElement;
-  private readonly position: HTMLElement;
-  private readonly allure: HTMLElement;
-  private readonly etoiles: HTMLElement;
-  private readonly proche: HTMLElement;
-  private readonly aide: HTMLElement;
-
-  constructor(parent: HTMLElement, graine: string, nombreBras: number, totalEtoiles: number, tactile: boolean) {
+  constructor(parent: HTMLElement, tactile: boolean) {
     this.racine = document.createElement('div');
     this.racine.className = 'hud';
-    const milliards = nombre(totalEtoiles / 1e9, 1);
     this.racine.innerHTML = `
       <div class="viseur"></div>
       <div class="haut-gauche">
-        <div class="titre">Galaxie</div>
-        <div class="valeur" data-r="graine"></div>
-        <div class="discret">${nombreBras} bras spiraux · environ ${milliards} milliards d'étoiles</div>
+        <div class="titre" data-r="hg-titre"></div>
+        <div class="valeur" data-r="hg-valeur"></div>
+        <div class="discret" data-r="hg-detail"></div>
       </div>
       <div class="haut-droite">
-        <div class="titre">Étoiles affichées</div>
-        <div class="valeur" data-r="etoiles">0</div>
-        <div class="discret">${tactile ? '' : 'H : aide · F3 : mesures'}</div>
+        <div class="titre" data-r="hd-titre"></div>
+        <div class="valeur" data-r="hd-valeur"></div>
+        <div class="discret" data-r="hd-detail"></div>
       </div>
       <div class="bas-gauche">
-        <div class="titre">Position (années-lumière)</div>
-        <div class="valeur" data-r="position"></div>
-        <div class="valeur" data-r="allure"></div>
+        <div class="titre" data-r="bg-titre"></div>
+        <div class="valeur" data-r="bg-ligne1"></div>
+        <div class="valeur" data-r="bg-ligne2"></div>
       </div>
-      <div class="bas-centre">
-        <div class="titre">Étoile la plus proche</div>
-        <div data-r="proche"></div>
+      <div class="bas-centre" data-r="fiche">
+        <div class="titre" data-r="fiche-titre"></div>
+        <div class="etoile-nom" data-r="fiche-nom"></div>
+        <div class="discret" data-r="fiche-detail"></div>
       </div>
-      <div class="panneau aide cache" data-r="aide">
-        <h2>Commandes</h2>
-        <table>
-          <tr><td>Z Q S D</td><td>avancer, reculer, aller à gauche ou à droite (W A S D sur clavier QWERTY)</td></tr>
-          <tr><td>Espace / C</td><td>monter / descendre</td></tr>
-          <tr><td>A / E</td><td>pencher à gauche / à droite</td></tr>
-          <tr><td>Souris</td><td>regarder (clic pour capturer la souris, Échap pour la libérer)</td></tr>
-          <tr><td>Molette</td><td>régler la vitesse</td></tr>
-          <tr><td>Maj</td><td>vitesse × 10</td></tr>
-          <tr><td>H</td><td>afficher ou masquer cette aide</td></tr>
-          <tr><td>F3</td><td>panneau de mesures</td></tr>
-          <tr><td>G</td><td>changer de graine</td></tr>
-        </table>
-      </div>
+      <div class="message cache" data-r="message"></div>
+      <div class="panneau aide cache" data-r="aide"></div>
+      <div class="boutons" data-r="boutons"></div>
       <div class="tactile ${tactile ? '' : 'cache'}">
         <button type="button" data-v="1" aria-label="Plus vite">+</button>
         <button type="button" data-v="-1" aria-label="Moins vite">−</button>
       </div>`;
     parent.appendChild(this.racine);
-
-    const repere = (nom: string) => this.racine.querySelector(`[data-r="${nom}"]`) as HTMLElement;
-    repere('graine').textContent = graine; // textContent : la graine est affichée telle quelle, jamais interprétée
-    this.position = repere('position');
-    this.allure = repere('allure');
-    this.etoiles = repere('etoiles');
-    this.proche = repere('proche');
-    this.aide = repere('aide');
-
+    for (const element of Array.from(this.racine.querySelectorAll<HTMLElement>('[data-r]'))) {
+      this.zones[element.dataset.r!] = element;
+    }
+    this.boutons = this.zones['boutons']!;
+    this.aide = this.zones['aide']!;
+    this.message = this.zones['message']!;
     for (const bouton of Array.from(this.racine.querySelectorAll<HTMLButtonElement>('.tactile button'))) {
       bouton.addEventListener('click', () => this.surVitesse(Number(bouton.dataset.v)));
     }
   }
 
-  /** Affiche ou masque le rappel des commandes. */
+  /** Change le texte d'une zone (seulement s'il a changé, pour ne pas fatiguer le navigateur). */
+  private ecrire(zone: string, texte: string): void {
+    const element = this.zones[zone]!;
+    if (element.textContent !== texte) element.textContent = texte;
+  }
+
+  hautGauche(titre: string, valeur: string, detail: string): void {
+    this.ecrire('hg-titre', titre);
+    this.ecrire('hg-valeur', valeur);
+    this.ecrire('hg-detail', detail);
+  }
+
+  hautDroite(titre: string, valeur: string, detail: string): void {
+    this.ecrire('hd-titre', titre);
+    this.ecrire('hd-valeur', valeur);
+    this.ecrire('hd-detail', detail);
+  }
+
+  basGauche(titre: string, ligne1: string, ligne2: string): void {
+    this.ecrire('bg-titre', titre);
+    this.ecrire('bg-ligne1', ligne1);
+    this.ecrire('bg-ligne2', ligne2);
+  }
+
+  /** Fiche du bas de l'écran (étoile visée, par exemple). Un titre vide la masque. */
+  fiche(titre: string, nom: string, detail: string): void {
+    this.zones['fiche']!.classList.toggle('cache', titre === '');
+    this.ecrire('fiche-titre', titre);
+    this.ecrire('fiche-nom', nom);
+    this.ecrire('fiche-detail', detail);
+  }
+
+  /** Définit les boutons cliquables (utiles surtout sur écran tactile). */
+  definirBoutons(liste: readonly BoutonHud[]): void {
+    const signature = liste.map((b) => b.texte).join('|');
+    if (signature === this.signatureBoutons) return;
+    this.signatureBoutons = signature;
+    this.boutons.innerHTML = '';
+    for (const b of liste) {
+      const bouton = document.createElement('button');
+      bouton.type = 'button';
+      bouton.textContent = b.texte;
+      bouton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        b.action();
+      });
+      this.boutons.appendChild(bouton);
+    }
+  }
+
+  /** Définit le contenu du rappel des commandes : liste de [touche, action]. */
+  definirAide(titre: string, lignes: readonly (readonly [string, string])[]): void {
+    this.aide.innerHTML = '';
+    const h = document.createElement('h2');
+    h.textContent = titre;
+    const table = document.createElement('table');
+    for (const [touche, action] of lignes) {
+      const tr = table.insertRow();
+      tr.insertCell().textContent = touche;
+      tr.insertCell().textContent = action;
+    }
+    this.aide.append(h, table);
+  }
+
   basculerAide(): void {
     this.aide.classList.toggle('cache');
   }
 
-  /** Met à jour les textes (appelée quelques fois par seconde, pas à chaque image). */
-  mettreAJour(etat: EtatHud): void {
-    const p = etat.position;
-    const centre = Math.sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
-    this.position.textContent = `x ${nombre(p.x, 1)}   y ${nombre(p.y, 1)}   z ${nombre(p.z, 1)}`;
-    this.allure.textContent = `centre à ${distance(centre)} · vitesse ${vitesse(etat.vitesse)} (max ${vitesse(etat.vitesseMax)})`;
-    this.etoiles.textContent = nombre(etat.etoilesAffichees);
+  /** Affiche un court message au centre de l'écran pendant quelques secondes. */
+  annoncer(texte: string, secondes = 3.5): void {
+    this.message.textContent = texte;
+    this.message.classList.remove('cache');
+    this.finMessage = performance.now() + secondes * 1000;
+  }
 
-    const e = etat.etoileProche;
-    if (e) {
-      const famille = e.binaire ? `${e.famille}, système binaire` : e.famille;
-      this.proche.innerHTML = '';
-      const nom = document.createElement('div');
-      nom.className = 'etoile-nom';
-      nom.textContent = e.nom;
-      const detail = document.createElement('div');
-      detail.className = 'discret';
-      detail.textContent = `${famille} · ${distance(e.distance)}`;
-      this.proche.append(nom, detail);
-    } else {
-      this.proche.textContent = '—';
+  /** À appeler régulièrement : efface le message quand son temps est écoulé. */
+  mettreAJour(): void {
+    if (this.finMessage > 0 && performance.now() > this.finMessage) {
+      this.message.classList.add('cache');
+      this.finMessage = 0;
     }
+  }
+
+  /** Masque ou affiche tout le HUD (pendant le saut hyperespace). */
+  rendreVisible(visible: boolean): void {
+    this.racine.classList.toggle('efface', !visible);
   }
 }

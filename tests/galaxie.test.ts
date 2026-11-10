@@ -129,4 +129,4 @@ describe('noms', () => {
 });
 
 // Valeurs de référence : « nombre d'étoiles : empreinte » pour les 4 niveaux.
-const REFERENCE = ['20:3207924201', '67:1145519862', '141:370637290', '409:2441430602'];
+const REFERENCE = ['20:3316655343', '67:2162245887', '141:749050519', '409:2980256348'];

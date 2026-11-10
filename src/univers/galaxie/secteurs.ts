@@ -25,6 +25,8 @@ export interface DonneesSecteur {
   couleurs: Float32Array;
   /** Éclat de chaque étoile (multiples de l'éclat du Soleil). */
   luminosites: Float32Array;
+  /** Température de surface de chaque étoile (kelvins). */
+  temperatures: Float32Array;
   /** Famille de chaque étoile (indice dans CLASSES_ETOILES). */
   classes: Uint8Array;
   /** 1 si l'étoile est un système binaire, 0 sinon. */
@@ -75,6 +77,7 @@ export function genererSecteur(p: ParametresGalaxie, niveau: number, sx: number,
   const positions = new Float32Array(candidates * 3);
   const couleurs = new Float32Array(candidates * 3);
   const luminosites = new Float32Array(candidates);
+  const temperatures = new Float32Array(candidates);
   const classes = new Uint8Array(candidates);
   const binaires = new Uint8Array(candidates);
   const graines = new Uint32Array(candidates);
@@ -107,7 +110,8 @@ export function genererSecteur(p: ParametresGalaxie, niveau: number, sx: number,
     const [lMin, lMax] = classe.luminosite;
     luminosites[n] = lMin + (lMax - lMin) * tirageEclat * tirageEclat;
     const [tMin, tMax] = classe.temperature;
-    ecrireCouleurEtoile(tMin + (tMax - tMin) * tirageTemperature, couleurs, n * 3);
+    temperatures[n] = tMin + (tMax - tMin) * tirageTemperature;
+    ecrireCouleurEtoile(temperatures[n]!, couleurs, n * 3);
     classes[n] = indiceClasse;
     binaires[n] = tirageBinaire < PART_BINAIRES ? 1 : 0;
     graines[n] = hacher2(graine, i);
@@ -123,6 +127,7 @@ export function genererSecteur(p: ParametresGalaxie, niveau: number, sx: number,
     positions: positions.subarray(0, n * 3),
     couleurs: couleurs.subarray(0, n * 3),
     luminosites: luminosites.subarray(0, n),
+    temperatures: temperatures.subarray(0, n),
     classes: classes.subarray(0, n),
     binaires: binaires.subarray(0, n),
     graines: graines.subarray(0, n),
@@ -139,6 +144,7 @@ function secteurVide(niveau: number, sx: number, sy: number, sz: number): Donnee
     positions: new Float32Array(0),
     couleurs: new Float32Array(0),
     luminosites: new Float32Array(0),
+    temperatures: new Float32Array(0),
     classes: new Uint8Array(0),
     binaires: new Uint8Array(0),
     graines: new Uint32Array(0),
@@ -178,4 +184,62 @@ export class CacheSecteurs {
   get taille(): number {
     return this.secteurs.size;
   }
+}
+
+/** Adresse d'une étoile dans la galaxie : son secteur et son rang dans ce secteur. */
+export interface AdresseEtoile {
+  niveau: number;
+  sx: number;
+  sy: number;
+  sz: number;
+  indice: number;
+}
+
+/** Tout ce qu'on sait d'une étoile vue depuis la galaxie. */
+export interface EtoileGalaxie extends AdresseEtoile {
+  /** Graine de l'étoile : c'est elle qui engendre tout son système solaire. */
+  graine: number;
+  /** Position dans la galaxie (al), en double précision. */
+  x: number;
+  y: number;
+  z: number;
+  classe: number;
+  luminosite: number;
+  temperature: number;
+  binaire: boolean;
+}
+
+/** Écrit une adresse sous forme de texte court, par exemple « 1:650:1:0:12 ». */
+export function texteAdresse(a: AdresseEtoile): string {
+  return `${a.niveau}:${a.sx}:${a.sy}:${a.sz}:${a.indice}`;
+}
+
+/** Relit une adresse écrite par texteAdresse (null si le texte est invalide). */
+export function lireAdresse(texte: string | null): AdresseEtoile | null {
+  if (!texte) return null;
+  const n = texte.split(':').map(Number);
+  if (n.length !== 5 || !n.every(Number.isInteger)) return null;
+  if (n[0]! < 0 || n[0]! >= NIVEAUX_SECTEURS.length || n[4]! < 0) return null;
+  return { niveau: n[0]!, sx: n[1]!, sy: n[2]!, sz: n[3]!, indice: n[4]! };
+}
+
+/** Retrouve une étoile dans un secteur déjà calculé (null si le rang n'existe pas). */
+export function etoileDuSecteur(s: DonneesSecteur, indice: number): EtoileGalaxie | null {
+  if (indice < 0 || indice >= s.nombre) return null;
+  const taille = NIVEAUX_SECTEURS[s.niveau]!.taille;
+  return {
+    niveau: s.niveau,
+    sx: s.sx,
+    sy: s.sy,
+    sz: s.sz,
+    indice,
+    graine: s.graines[indice]!,
+    x: s.sx * taille + s.positions[indice * 3]!,
+    y: s.sy * taille + s.positions[indice * 3 + 1]!,
+    z: s.sz * taille + s.positions[indice * 3 + 2]!,
+    classe: s.classes[indice]!,
+    luminosite: s.luminosites[indice]!,
+    temperature: s.temperatures[indice]!,
+    binaire: s.binaires[indice] === 1,
+  };
 }

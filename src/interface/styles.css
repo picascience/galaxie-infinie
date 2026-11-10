@@ -306,3 +306,249 @@ body {
     right: 80px;
   }
 }
+
+/* ---------- Jour 2 : boutons, message, repères, panneau du système ---------- */
+
+.hud,
+.panneau.systeme {
+  transition: opacity 0.4s;
+}
+
+.efface {
+  opacity: 0;
+  pointer-events: none !important;
+}
+
+.hud .boutons {
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  display: flex;
+  gap: 8px;
+}
+
+.hud .boutons button,
+.tactile button {
+  cursor: pointer;
+}
+
+.hud .boutons button {
+  padding: 9px 16px;
+  border: 1px solid var(--bord-panneau);
+  border-radius: 8px;
+  background: var(--fond-panneau);
+  color: var(--texte);
+  font: 600 13px var(--police);
+  letter-spacing: 0.04em;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.hud .boutons button:hover {
+  border-color: var(--accent);
+}
+
+.hud .message {
+  top: 22%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 18px;
+  border-radius: 8px;
+  background: var(--fond-panneau);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.reperes {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  font-size: 12px;
+  text-shadow: 0 1px 3px #000;
+}
+
+.repere {
+  position: absolute;
+  top: 0;
+  left: 0;
+  white-space: nowrap;
+  will-change: transform;
+}
+
+/* Le petit cercle centré sur l'objet. */
+.repere i {
+  position: absolute;
+  top: -7px;
+  left: -7px;
+  width: 12px;
+  height: 12px;
+  border: 1px solid rgba(127, 212, 255, 0.75);
+  border-radius: 50%;
+}
+
+.repere b,
+.repere span {
+  position: absolute;
+  left: 12px;
+  font-weight: 500;
+}
+
+.repere b {
+  top: -15px;
+}
+
+.repere span {
+  top: 0;
+  color: var(--texte-discret);
+  font-family: var(--police-chiffres);
+  font-size: 11px;
+}
+
+.repere.lune i {
+  top: -5px;
+  left: -5px;
+  width: 8px;
+  height: 8px;
+  border-color: rgba(143, 163, 184, 0.7);
+}
+
+.repere.lune b {
+  color: var(--texte-discret);
+  font-weight: 400;
+}
+
+.repere.cible i {
+  top: -13px;
+  left: -13px;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--accent);
+}
+
+.repere.cible b,
+.repere.cible span {
+  left: 20px;
+}
+
+.repere.ici i {
+  top: -10px;
+  left: -10px;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #ffd27f;
+  border-radius: 3px;
+  transform: rotate(45deg);
+}
+
+.repere.ici b {
+  top: 14px;
+  left: 0;
+  color: #ffd27f;
+  transform: translateX(-50%);
+}
+
+.repere.ici span {
+  top: 29px;
+  left: 0;
+  transform: translateX(-50%);
+}
+
+.repere.visite i {
+  top: -5px;
+  left: -5px;
+  width: 8px;
+  height: 8px;
+  border-color: #ffd27f;
+  border-radius: 2px;
+  transform: rotate(45deg);
+}
+
+.repere.visite b {
+  color: #c9b48a;
+  font-weight: 400;
+}
+
+.panneau.systeme {
+  top: 70px;
+  left: max(14px, env(safe-area-inset-left));
+  max-height: calc(100% - 190px);
+  width: 250px;
+  overflow-y: auto;
+  padding: 10px;
+  pointer-events: auto;
+}
+
+.panneau.systeme .ligne {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  column-gap: 6px;
+  width: 100%;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--texte);
+  font: 13px var(--police);
+  text-align: left;
+  cursor: pointer;
+}
+
+.panneau.systeme .ligne:hover {
+  background: rgba(127, 212, 255, 0.14);
+}
+
+.panneau.systeme .ligne.proche b {
+  color: var(--accent);
+}
+
+.panneau.systeme .ligne kbd {
+  grid-row: span 2;
+  align-self: center;
+  color: var(--texte-discret);
+  font: 11px var(--police-chiffres);
+}
+
+.panneau.systeme .ligne b {
+  font-weight: 500;
+}
+
+.panneau.systeme .ligne span {
+  grid-column: 2;
+  color: var(--texte-discret);
+  font-size: 11px;
+}
+
+.panneau.systeme .ligne.lune {
+  padding-left: 22px;
+}
+
+.panneau.systeme .ligne.etoile b {
+  color: #ffd27f;
+}
+
+.panneau.systeme .note {
+  padding: 6px;
+  color: var(--texte-discret);
+  font-size: 11px;
+}
+
+@media (max-width: 640px) {
+  .panneau.systeme {
+    top: 78px;
+    width: min(250px, calc(100% - 48px));
+    max-height: calc(100% - 300px);
+  }
+
+  .hud .bas-gauche {
+    right: 14px;
+    bottom: max(62px, calc(env(safe-area-inset-bottom) + 54px));
+  }
+
+  .hud .bas-centre {
+    bottom: max(132px, calc(env(safe-area-inset-bottom) + 124px));
+  }
+
+  .tactile {
+    bottom: max(150px, calc(env(safe-area-inset-bottom) + 140px));
+  }
+}

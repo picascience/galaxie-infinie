@@ -13,14 +13,14 @@ aucun appel réseau, aucun fichier image ou son.
 | Jour | Contenu | État |
 | --- | --- | --- |
 | 1 | Fondations, galaxie par secteurs, champ d'étoiles, caméra libre | fait |
-| 2 | Systèmes solaires, carte galactique, hyperespace | à venir |
+| 2 | Systèmes solaires, orbites animées, carte galactique, hyperespace | fait |
 | 3 | Terrain des planètes (sphère cubique, quadtree, Web Workers) | à venir |
 | 4 | Atmosphère, océans, nuages, 8 types de planètes | à venir |
 | 5 | Vaisseau, pilotage, atterrissage | à venir |
 | 6 | Objets de surface, scanner, journal, marqueurs | à venir |
 | 7 | Optimisation, mode iPhone, documentation complète | à venir |
 
-## Commandes (jour 1 : caméra libre)
+## Commandes (jours 1 à 4 : caméra libre)
 
 | Touche | Action |
 | --- | --- |
@@ -29,12 +29,19 @@ aucun appel réseau, aucun fichier image ou son.
 | A / E | pencher à gauche / à droite |
 | Souris | regarder (clic pour capturer la souris, Échap pour la libérer) |
 | Molette | régler la vitesse |
-| Maj | vitesse × 10 |
+| Maj | aller plus vite |
+| 1 à 9 | aller vers la planète de ce numéro |
+| P | liste des planètes (un clic sur une ligne y emmène) |
+| O | afficher ou masquer les orbites |
+| M | ouvrir ou fermer la carte galactique |
+| Entrée | sur la carte : sauter vers l'étoile sélectionnée |
 | H | aide |
 | F3 | panneau de mesures |
 | G | changer de graine |
 
-Sur téléphone : pouce gauche pour avancer, pouce droit pour regarder, boutons + et − pour la vitesse.
+Sur téléphone : pouce gauche pour avancer, pouce droit pour regarder, boutons + et −
+pour la vitesse, boutons « Carte », « Planètes » et « Sauter » en bas de l'écran.
+Sur la carte, on sélectionne une étoile en la touchant.
 
 ## Lancer le jeu sur son ordinateur
 
@@ -51,14 +58,21 @@ npm run verifier   (types + tests + construction + test d'autonomie)
 ```
 src/
 ├─ main.ts        point d'entrée : assemble les modules
-├─ config/        échelles de la galaxie, préréglages graphiques, mots interdits
-├─ noyau/         boucle de jeu
+├─ config/        échelles de la galaxie et des systèmes, préréglages graphiques, mots interdits
+├─ noyau/         boucle de jeu, chef d'orchestre (jeu.ts)
 ├─ maths/         hachage, hasard à graine, bruit, fonctions « identiques partout »
 ├─ univers/       génération déterministe (aucun affichage, jamais de Three.js)
-│  └─ galaxie/    forme spirale, secteurs d'étoiles, familles d'étoiles, noms
+│  ├─ galaxie/    forme spirale, secteurs d'étoiles, familles d'étoiles, noms
+│  ├─ systeme/    étoiles, planètes, lunes, anneaux, ceintures, orbites
+│  └─ planetes/types/   un fichier par type de planète + registre
 ├─ rendu/         affichage avec Three.js et shaders GLSL
-├─ controles/     clavier, souris, tactile, caméra libre
-└─ interface/     écran d'accueil, affichage de bord, panneau de mesures
+│  ├─ espace/     étoiles de la galaxie, bande galactique
+│  ├─ systeme/    étoile, planètes, anneaux, ceintures, orbites
+│  ├─ effets/     hyperespace
+│  └─ shaders/    fichiers .glsl
+├─ controles/     clavier, souris, tactile, caméras libres (carte et système)
+├─ exploration/   mémoire du navigateur (systèmes visités)
+└─ interface/     écran d'accueil, affichage de bord, repères, panneaux
 tests/            tests automatiques (déterminisme, règles du projet)
 outils/           test d'autonomie du site construit
 ```
